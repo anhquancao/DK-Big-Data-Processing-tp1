@@ -1,0 +1,6 @@
+book0	(car1, 7) (cd2, 6) (hat4, 6) (cake5, 4) (dvd3, 2) 
+cake5	(cd2, 26) (hat4, 24) (car1, 21) (dvd3, 9) (book0, 4) 
+car1	(hat4, 21) (cake5, 21) (cd2, 18) (dvd3, 12) (book0, 7) 
+cd2	(hat4, 31) (cake5, 26) (car1, 18) (dvd3, 6) (book0, 6) 
+dvd3	(hat4, 13) (car1, 12) (cake5, 9) (cd2, 6) (book0, 2) 
+hat4	(cd2, 31) (cake5, 24) (car1, 21) (dvd3, 13) (book0, 6) 

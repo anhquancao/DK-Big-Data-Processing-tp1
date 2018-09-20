@@ -1,0 +1,15 @@
+book0 dvd3 hat4 car1 cd2 cake5 hat4 
+car1 book0 cd2 cake5 car1 car1 hat4 
+hat4 hat4 cake5 dvd3 car1 car1 
+hat4 cd2 cd2 cd2 cake5 hat4 book0 
+dvd3 dvd3 hat4 car1 dvd3 
+hat4 cake5 cd2 hat4 cake5 cd2 hat4 
+cd2 car1 cake5 car1 car1 
+hat4 cd2 hat4 cake5 car1 cake5 cd2 
+dvd3 cake5 cake5 cd2 dvd3 
+cd2 car1 car1 cake5 car1 
+hat4 car1 car1 book0 car1 cd2 dvd3 cake5 
+hat4 cd2 hat4 cd2 cake5 
+hat4 dvd3 car1 cake5 cd2 car1 cake5 
+cd2 cake5 hat4 cake5 cd2 
+cd2 car1 dvd3 hat4 hat4 hat4 hat4 
