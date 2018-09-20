@@ -27,16 +27,24 @@ public class CustomerAlsoBoughtWithCombiner {
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 			Text mapOutputKey = new Text();
 			Text mapOutputValue = new Text();
+
 			String[] items = value.toString().trim().split(" ");
+
+			// output pairs of items that are bought together
+			// for each 2 items, output 2 pairs with each item
+			// as a key in each pair and the other is value.
+			// Example: <"book34", "dvd52">, <"dvd52", "book34">
 			for (int i = 0; i < items.length; i++) {
 				for (int j = i; j < items.length; j++) {
 					String item1 = items[i];
 					String item2 = items[j];
 					if (!item1.equalsIgnoreCase(item2)) {
+						// item1 as key, item2 as value
 						mapOutputKey.set(item1);
 						mapOutputValue.set(item2);
 						context.write(mapOutputKey, mapOutputValue);
 
+						// item2 as key, item1 as value
 						mapOutputKey.set(item2);
 						mapOutputValue.set(item1);
 						context.write(mapOutputKey, mapOutputValue);
@@ -51,8 +59,9 @@ public class CustomerAlsoBoughtWithCombiner {
 
 		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 			Text result = new Text();
-			HashMap<String, Integer> map = new HashMap<>();
 
+			// Count the number of each item customer also bought
+			HashMap<String, Integer> map = new HashMap<>();
 			for (Text val : values) {
 				String sVal = val.toString();
 				Object occ = map.get(sVal);
@@ -64,6 +73,10 @@ public class CustomerAlsoBoughtWithCombiner {
 				}
 			}
 
+			// Output the intermediate key value pair
+			// key is item
+			// value is the list of pairs <item, number of items is also bought with>
+			// value is output as string: "dvd32,1 cd12,2 book12,1"
 			String res = "";
 			Iterator it = map.entrySet().iterator();
 			while (it.hasNext()) {
@@ -81,8 +94,11 @@ public class CustomerAlsoBoughtWithCombiner {
 		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 			Text result = new Text();
 			HashMap<String, Integer> map = new HashMap<>();
-
+			
 			for (Text val : values) {
+				// Parse the intermediate value in the form:
+				// "dvd32,1 cd12,2 book12,1"
+				// Count the total number of occurrences of each item
 				String[] listVal = val.toString().trim().split(" ");
 				for (String s : listVal) {
 					String[] temp = s.split(",");
@@ -102,6 +118,7 @@ public class CustomerAlsoBoughtWithCombiner {
 
 			List<Entry<String, Integer>> list = new LinkedList<>(map.entrySet());
 
+			// Sort to get the most items that is commonly bought with
 			Collections.sort(list, new Comparator<Entry<String, Integer>>() {
 				@Override
 				public int compare(Entry<String, Integer> o1, Entry<String, Integer> o2) {
@@ -111,8 +128,10 @@ public class CustomerAlsoBoughtWithCombiner {
 				}
 			});
 
+			// Output all the bought with items as string below.
+			// Example: (cd12,3) (dvd13,2) (book12,1) (book32,1)
+			// Left is the most common, and the right is the least
 			String res = "";
-
 			for (Iterator it = list.iterator(); it.hasNext();) {
 				Map.Entry entry = (Map.Entry) it.next();
 				res = res + "(" + entry.getKey() + ", " + entry.getValue() + ") ";
