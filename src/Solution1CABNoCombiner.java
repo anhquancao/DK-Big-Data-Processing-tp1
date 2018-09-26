@@ -21,8 +21,8 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-public class CustomerAlsoBoughtWithCombiner {
-	public static class TokenizerMapper extends Mapper<Object, Text, Text, Text> {
+public class Solution1CABNoCombiner {
+	public static class ItemPairMapper extends Mapper<Object, Text, Text, Text> {
 
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 			Text mapOutputKey = new Text();
@@ -38,12 +38,14 @@ public class CustomerAlsoBoughtWithCombiner {
 				for (int j = i; j < items.length; j++) {
 					String item1 = items[i];
 					String item2 = items[j];
+					
 					if (!item1.equalsIgnoreCase(item2)) {
+						
 						// item1 as key, item2 as value
 						mapOutputKey.set(item1);
 						mapOutputValue.set(item2);
 						context.write(mapOutputKey, mapOutputValue);
-
+						
 						// item2 as key, item1 as value
 						mapOutputKey.set(item2);
 						mapOutputValue.set(item1);
@@ -55,70 +57,29 @@ public class CustomerAlsoBoughtWithCombiner {
 		}
 	}
 
-	public static class ProductCountCombiner extends Reducer<Text, Text, Text, Text> {
-
-		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-			Text result = new Text();
-
-			// Count the number of each item customer also bought
-			HashMap<String, Integer> map = new HashMap<>();
-			for (Text val : values) {
-				String sVal = val.toString();
-				Object occ = map.get(sVal);
-				if (occ == null) {
-					map.put(sVal, 1);
-				} else {
-					int nOcc = (int) occ;
-					map.put(sVal, nOcc + 1);
-				}
-			}
-
-			// Output the intermediate key value pair
-			// key is item
-			// value is the list of pairs <item, number of items is also bought with>
-			// value is output as string: "dvd32,1 cd12,2 book12,1"
-			String res = "";
-			Iterator it = map.entrySet().iterator();
-			while (it.hasNext()) {
-				Map.Entry pair = (Map.Entry) it.next();
-				res += pair.getKey() + "," + pair.getValue() + " ";
-			}
-
-			result.set(res);
-			context.write(key, result);
-		}
-	}
-
 	public static class ProductCountsReducer extends Reducer<Text, Text, Text, Text> {
 
 		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 			Text result = new Text();
+	
+			// Count the number of each item customer also bought
 			HashMap<String, Integer> map = new HashMap<>();
-			
 			for (Text val : values) {
-				// Parse the intermediate value in the form:
-				// "dvd32,1 cd12,2 book12,1"
-				// Count the total number of occurrences of each item
-				String[] listVal = val.toString().trim().split(" ");
-				for (String s : listVal) {
-					String[] temp = s.split(",");
-					String item = temp[0];
-					int occ = Integer.parseInt(temp[1]);
-
-					Object storedOcc = map.get(item);
-					if (storedOcc == null) {
-						map.put(item, occ);
-					} else {
-						int nOcc = (int) storedOcc;
-						map.put(item, occ + nOcc);
-					}
+				String item = val.toString();
+				
+				Object storedOcc = map.get(item);
+				if (storedOcc == null) {
+					map.put(item, 1);
+				} else {
+					int nOcc = (int) storedOcc;
+					map.put(item, 1 + nOcc);
 				}
 
 			}
 
 			List<Entry<String, Integer>> list = new LinkedList<>(map.entrySet());
 
-			// Sort to get the most items that is commonly bought with
+			// Sort to get the most items that is commonly bought with 
 			Collections.sort(list, new Comparator<Entry<String, Integer>>() {
 				@Override
 				public int compare(Entry<String, Integer> o1, Entry<String, Integer> o2) {
@@ -144,10 +105,9 @@ public class CustomerAlsoBoughtWithCombiner {
 
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		Job job = Job.getInstance(conf, "Cusomter Also Bought 1");
-		job.setJarByClass(CustomerAlsoBoughtWithCombiner.class);
-		job.setMapperClass(TokenizerMapper.class);
-		job.setCombinerClass(ProductCountCombiner.class);
+		Job job = Job.getInstance(conf, "Cusomter Also Bought solution 1");
+		job.setJarByClass(Solution1CABNoCombiner.class);
+		job.setMapperClass(ItemPairMapper.class);
 		job.setReducerClass(ProductCountsReducer.class);
 
 		job.setOutputKeyClass(Text.class);

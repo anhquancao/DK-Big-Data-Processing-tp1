@@ -13,7 +13,9 @@ import java.util.Map.Entry;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.join.Parser.Token;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -21,65 +23,67 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-public class CustomerAlsoBoughtWithoutCombiner {
-	public static class TokenizerMapper extends Mapper<Object, Text, Text, Text> {
+public class Solution2CAB {
+	public static class CountItemsMapper extends Mapper<Object, Text, Text, MapWritable> {
 
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-			Text mapOutputKey = new Text();
-			Text mapOutputValue = new Text();
-
+						
 			String[] items = value.toString().trim().split(" ");
-
-			// output pairs of items that are bought together
-			// for each 2 items, output 2 pairs with each item
-			// as a key in each pair and the other is value.
-			// Example: <"book34", "dvd52">, <"dvd52", "book34">
+			
 			for (int i = 0; i < items.length; i++) {
-				for (int j = i; j < items.length; j++) {
-					String item1 = items[i];
+				String item1 = items[i];
+				HashMap<String, Integer> map = new HashMap<>();
+				for (int j = 0; j < items.length; j++) {
 					String item2 = items[j];
-					
 					if (!item1.equalsIgnoreCase(item2)) {
-						
-						// item1 as key, item2 as value
-						mapOutputKey.set(item1);
-						mapOutputValue.set(item2);
-						context.write(mapOutputKey, mapOutputValue);
-						
-						// item2 as key, item1 as value
-						mapOutputKey.set(item2);
-						mapOutputValue.set(item1);
-						context.write(mapOutputKey, mapOutputValue);
-
+						Integer occs = map.get(item2);
+						if (occs == null) {					
+							map.put(item1, 1);
+						} else {							
+							map.put(item1, occs + 1);
+						}
 					}
 				}
+				for (String keyStr : map.keySet()) {
+					Text outputKey = new Text(keyStr);
+					MapWritable mapWritable = new MapWritable();
+					int occs = map.get(keyStr);
+					mapWritable.put(outputKey, new IntWritable(occs));
+					context.write(outputKey, mapWritable);
+				}
+				
 			}
 		}
 	}
 
-	public static class ProductCountsReducer extends Reducer<Text, Text, Text, Text> {
+	public static class ProductCountsReducer extends Reducer<Text, MapWritable, Text, MapWritable> {
 
-		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-			Text result = new Text();
-	
-			// Count the number of each item customer also bought
+		public void reduce(Text key, Iterable<MapWritable> maps, Context context)
+				throws IOException, InterruptedException {
 			HashMap<String, Integer> map = new HashMap<>();
-			for (Text val : values) {
-				String item = val.toString();
-				
-				Object storedOcc = map.get(item);
-				if (storedOcc == null) {
-					map.put(item, 1);
-				} else {
-					int nOcc = (int) storedOcc;
-					map.put(item, 1 + nOcc);
+
+			for (MapWritable mapItem : maps) {
+
+				for (Writable mapKey : mapItem.keySet()) {
+					Text textItem = (Text) mapKey;
+					String item = textItem.toString();
+					
+					int occ = Integer.parseInt(mapItem.get(textItem).toString());
+
+					Object storedOcc = map.get(item);
+					if (storedOcc == null) {
+						map.put(item, occ);
+					} else {
+						int nOcc = (int) storedOcc;
+						map.put(item, occ + nOcc);
+					}
 				}
 
 			}
 
 			List<Entry<String, Integer>> list = new LinkedList<>(map.entrySet());
 
-			// Sort to get the most items that is commonly bought with 
+			// Sort to get the most items that is commonly bought with
 			Collections.sort(list, new Comparator<Entry<String, Integer>>() {
 				@Override
 				public int compare(Entry<String, Integer> o1, Entry<String, Integer> o2) {
@@ -89,29 +93,31 @@ public class CustomerAlsoBoughtWithoutCombiner {
 				}
 			});
 
-			// Output all the bought with items as string below.
-			// Example: (cd12,3) (dvd13,2) (book12,1) (book32,1)
+			// Output the map of all items
 			// Left is the most common, and the right is the least
-			String res = "";
+			MapWritable outputMap = new MapWritable();
 			for (Iterator it = list.iterator(); it.hasNext();) {
 				Map.Entry entry = (Map.Entry) it.next();
-				res = res + "(" + entry.getKey() + ", " + entry.getValue() + ") ";
+				String keyStr = (String) entry.getKey();
+				Text keyText = new Text(keyStr);
+				int valueInt = (int) entry.getValue();
+				outputMap.put(keyText, new IntWritable(valueInt));
 			}
 
-			result.set(res);
-			context.write(key, result);
+			context.write(key, outputMap);
 		}
 	}
 
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		Job job = Job.getInstance(conf, "Cusomter Also Bought 1");
-		job.setJarByClass(CustomerAlsoBoughtWithoutCombiner.class);
-		job.setMapperClass(TokenizerMapper.class);
+		Job job = Job.getInstance(conf, "Customer Also Bought Solution 2");
+		job.setJarByClass(Solution2CAB.class);
+		job.setMapperClass(CountItemsMapper.class);
+//		job.setCombinerClass(ProductCountsReducer.class);
 		job.setReducerClass(ProductCountsReducer.class);
 
 		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(Text.class);
+		job.setOutputValueClass(MapWritable.class);
 
 		FileInputFormat.addInputPath(job, new Path(args[0]));
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));
