@@ -44,14 +44,15 @@ public class Solution2CAB {
 						}
 					}
 				}
-				for (String keyStr : map.keySet()) {
-					Text outputKey = new Text(keyStr);
-					MapWritable mapWritable = new MapWritable();
-					int occs = map.get(keyStr);
-					mapWritable.put(outputKey, new IntWritable(occs));
-					context.write(outputKey, mapWritable);
-				}
 				
+				MapWritable mapWritable = new MapWritable();
+				for (String keyStr : map.keySet()) {
+					Text keyText = new Text(keyStr);					
+					int occs = map.get(keyStr);
+					mapWritable.put(keyText, new IntWritable(occs));				
+				}
+				Text outputText = new Text(item1);
+				context.write(outputText, mapWritable);			
 			}
 		}
 	}
