@@ -27,9 +27,9 @@ public class Solution2CAB {
 	public static class CountItemsMapper extends Mapper<Object, Text, Text, MapWritable> {
 
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-						
+
 			String[] items = value.toString().trim().split(" ");
-			
+
 			for (int i = 0; i < items.length; i++) {
 				String item1 = items[i];
 				HashMap<String, Integer> map = new HashMap<>();
@@ -37,27 +37,27 @@ public class Solution2CAB {
 					String item2 = items[j];
 					if (!item1.equalsIgnoreCase(item2)) {
 						Integer occs = map.get(item2);
-						if (occs == null) {					
-							map.put(item1, 1);
-						} else {							
-							map.put(item1, occs + 1);
+						if (occs == null) {
+							map.put(item2, 1);
+						} else {
+							map.put(item2, occs + 1);
 						}
 					}
 				}
-				
+
 				MapWritable mapWritable = new MapWritable();
 				for (String keyStr : map.keySet()) {
-					Text keyText = new Text(keyStr);					
+					Text keyText = new Text(keyStr);
 					int occs = map.get(keyStr);
-					mapWritable.put(keyText, new IntWritable(occs));				
+					mapWritable.put(keyText, new IntWritable(occs));
 				}
 				Text outputText = new Text(item1);
-				context.write(outputText, mapWritable);			
+				context.write(outputText, mapWritable);
 			}
 		}
 	}
 
-	public static class ProductCountsReducer extends Reducer<Text, MapWritable, Text, MapWritable> {
+	public static class ProductCountsCombiner extends Reducer<Text, MapWritable, Text, MapWritable> {
 
 		public void reduce(Text key, Iterable<MapWritable> maps, Context context)
 				throws IOException, InterruptedException {
@@ -68,7 +68,42 @@ public class Solution2CAB {
 				for (Writable mapKey : mapItem.keySet()) {
 					Text textItem = (Text) mapKey;
 					String item = textItem.toString();
-					
+
+					int occ = Integer.parseInt(mapItem.get(textItem).toString());
+
+					Object storedOcc = map.get(item);
+					if (storedOcc == null) {
+						map.put(item, occ);
+					} else {
+						int nOcc = (int) storedOcc;
+						map.put(item, occ + nOcc);
+					}
+				}
+
+			}
+
+			MapWritable outputMap = new MapWritable();
+			for (String keyStr : map.keySet()) {
+				int valueInt = (int) map.get(keyStr);
+				outputMap.put(new Text(keyStr), new IntWritable(valueInt));
+			}
+
+			context.write(key, outputMap);
+		}
+	}
+
+	public static class ProductCountsReducer extends Reducer<Text, MapWritable, Text, Text> {
+
+		public void reduce(Text key, Iterable<MapWritable> maps, Context context)
+				throws IOException, InterruptedException {
+			HashMap<String, Integer> map = new HashMap<>();
+
+			for (MapWritable mapItem : maps) {
+
+				for (Writable mapKey : mapItem.keySet()) {
+					Text textItem = (Text) mapKey;
+					String item = textItem.toString();
+
 					int occ = Integer.parseInt(mapItem.get(textItem).toString());
 
 					Object storedOcc = map.get(item);
@@ -96,16 +131,16 @@ public class Solution2CAB {
 
 			// Output the map of all items
 			// Left is the most common, and the right is the least
-			MapWritable outputMap = new MapWritable();
+			// Output all the bought with items as string below.
+			// Example: (cd12,3) (dvd13,2) (book12,1) (book32,1)
+			// Left is the most common, and the right is the least
+			
+			String res = "";
 			for (Iterator it = list.iterator(); it.hasNext();) {
 				Map.Entry entry = (Map.Entry) it.next();
-				String keyStr = (String) entry.getKey();
-				Text keyText = new Text(keyStr);
-				int valueInt = (int) entry.getValue();
-				outputMap.put(keyText, new IntWritable(valueInt));
+				res = res + "(" + entry.getKey() + ", " + entry.getValue() + ") ";
 			}
-
-			context.write(key, outputMap);
+			context.write(key, new Text(res));
 		}
 	}
 
@@ -114,11 +149,13 @@ public class Solution2CAB {
 		Job job = Job.getInstance(conf, "Customer Also Bought Solution 2");
 		job.setJarByClass(Solution2CAB.class);
 		job.setMapperClass(CountItemsMapper.class);
-//		job.setCombinerClass(ProductCountsReducer.class);
+		job.setCombinerClass(ProductCountsCombiner.class);
 		job.setReducerClass(ProductCountsReducer.class);
 
 		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(MapWritable.class);
+		job.setOutputValueClass(Text.class);
+		job.setMapOutputKeyClass(Text.class);
+		job.setMapOutputValueClass(MapWritable.class);
 
 		FileInputFormat.addInputPath(job, new Path(args[0]));
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));
