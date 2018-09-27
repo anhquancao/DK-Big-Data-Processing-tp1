@@ -28,11 +28,15 @@ public class Solution2CAB {
 
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 
-			String[] items = value.toString().trim().split(" ");
+			String[] items = value.toString().trim().split(" "); // split line into word
 
+			
 			for (int i = 0; i < items.length; i++) {
 				String item1 = items[i];
 				HashMap<String, Integer> map = new HashMap<>();
+				
+				// for each item1, count the number of items 
+				// that are also bought with item1
 				for (int j = 0; j < items.length; j++) {
 					String item2 = items[j];
 					if (!item1.equalsIgnoreCase(item2)) {
@@ -45,6 +49,10 @@ public class Solution2CAB {
 					}
 				}
 
+				// Write the output
+				// key: each item in the data
+				// value: the map contains items and their amount
+				// bought together with this item
 				MapWritable mapWritable = new MapWritable();
 				for (String keyStr : map.keySet()) {
 					Text keyText = new Text(keyStr);
@@ -63,6 +71,8 @@ public class Solution2CAB {
 				throws IOException, InterruptedException {
 			HashMap<String, Integer> map = new HashMap<>();
 
+			// Sum all the map by key to get the total number of 
+			// items bought together with item key
 			for (MapWritable mapItem : maps) {
 
 				for (Writable mapKey : mapItem.keySet()) {
@@ -82,6 +92,10 @@ public class Solution2CAB {
 
 			}
 
+			// Output:
+			// key: item
+			// value: combined map total number of 
+			// items bought together with item in key
 			MapWritable outputMap = new MapWritable();
 			for (String keyStr : map.keySet()) {
 				int valueInt = (int) map.get(keyStr);
@@ -98,6 +112,8 @@ public class Solution2CAB {
 				throws IOException, InterruptedException {
 			HashMap<String, Integer> map = new HashMap<>();
 
+			// Sum all the map by key to get the total number of 
+			// items bought together with item key
 			for (MapWritable mapItem : maps) {
 
 				for (Writable mapKey : mapItem.keySet()) {

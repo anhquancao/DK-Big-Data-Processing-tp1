@@ -62,6 +62,8 @@ public class Solution1CABCombiner {
 			Text result = new Text();
 
 			// Count the number of each item customer also bought
+			// for each item1, count the number of items 
+			// that are also bought with item1
 			HashMap<String, Integer> map = new HashMap<>();
 			for (Text val : values) {
 				String sVal = val.toString();
